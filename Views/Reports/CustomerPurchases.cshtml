@@ -1,0 +1,91 @@
+@model dynamic
+
+@{
+    ViewData["Title"] = "Customer Purchases";
+    var customers = ViewData["Customers"] as List<OrderManagementMvc.Models.Customer>;
+    var customerId = ViewData["CustomerId"] as int?;
+    var customerName = ViewData["CustomerName"] as string;
+}
+
+<div class="container-fluid px-4">
+    <h2 class="fw-bold mb-4"><i class="bi bi-bag"></i> Customer Purchase History</h2>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-10">
+                    <label class="form-label fw-semibold">Select Customer</label>
+                    <select name="customerId" class="form-select">
+                        <option value="">-- Select a customer --</option>
+                        @foreach (var customer in customers)
+                        {
+                            <option value="@customer.Id" selected="@(customer.Id == customerId)">
+                                @customer.Name - @customer.Email
+                            </option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-dark w-100">
+                        <i class="bi bi-search"></i> View
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @if (customerId != null && Model.Count > 0)
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">Purchases by @customerName</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Category</th>
+                                <th class="text-end">Total Quantity</th>
+                                <th class="text-end">Total Spent</th>
+                                <th class="text-center">Orders</th>
+                                <th>Last Purchase</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                decimal totalSpent = 0;
+                            }
+                            @foreach (var item in Model)
+                            {
+                                totalSpent += item.TotalSpent;
+                                <tr>
+                                    <td class="fw-semibold">@item.ProductName</td>
+                                    <td><span class="badge bg-secondary">@item.Category</span></td>
+                                    <td class="text-end">@item.TotalQuantity</td>
+                                    <td class="text-end fw-bold">@item.TotalSpent.ToString("C")</td>
+                                    <td class="text-center">@item.OrderCount</td>
+                                    <td>@item.LastPurchaseDate.ToString("MMM dd, yyyy")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot class="table-dark">
+                            <tr>
+                                <th colspan="3" class="text-end">TOTAL:</th>
+                                <th class="text-end">@totalSpent.ToString("C")</th>
+                                <th colspan="2"></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+    else if (customerId != null)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No purchases found for this customer.
+        </div>
+    }
+</div>

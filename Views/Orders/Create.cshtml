@@ -1,0 +1,171 @@
+@{
+    ViewData["Title"] = "Create Order";
+    var products = ViewData["Products"] as List<OrderManagementMvc.Models.Product>;
+}
+
+<div class="container">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <h4 class="mb-0"><i class="bi bi-cart-plus"></i> Create New Order</h4>
+        </div>
+        <div class="card-body p-4">
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger">@TempData["Error"]</div>
+            }
+            
+            <form asp-action="Create" method="post" id="orderForm">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Customer <span class="text-danger">*</span></label>
+                        <select name="CustomerId" class="form-select" required>
+                            <option value="">Select Customer</option>
+                            @foreach (var item in (ViewData["CustomerId"] as SelectList))
+                            {
+                                <option value="@item.Value">@item.Text</option>
+                            }
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Agent (Optional)</label>
+                        <select name="AgentId" class="form-select">
+                            <option value="">No Agent</option>
+                            @foreach (var item in (ViewData["AgentId"] as SelectList))
+                            {
+                                <option value="@item.Value">@item.Text</option>
+                            }
+                        </select>
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Notes</label>
+                        <textarea name="Notes" class="form-control" rows="2" placeholder="Order notes..."></textarea>
+                    </div>
+                </div>
+
+                <hr class="my-4" />
+                
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Order Items</h5>
+                    <button type="button" class="btn btn-sm btn-dark" onclick="addOrderItem()">
+                        <i class="bi bi-plus"></i> Add Item
+                    </button>
+                </div>
+
+                <div id="orderItems">
+                    <div class="card mb-2 order-item">
+                        <div class="card-body">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-7">
+                                    <label class="form-label fw-semibold">Product</label>
+                                    <select name="ProductIds" class="form-select product-select" required onchange="updatePrice(this)">
+                                        <option value="">Select Product</option>
+                                        @foreach (var product in products)
+                                        {
+                                            <option value="@product.Id" data-price="@product.Price" data-stock="@product.StockQuantity">
+                                                @product.Name - @product.Price.ToString("C") (Stock: @product.StockQuantity)
+                                            </option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Quantity</label>
+                                    <input type="number" name="Quantities" class="form-control quantity-input" min="1" value="1" required onchange="updateSubtotal(this)">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-danger w-100" onclick="removeOrderItem(this)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="col-12">
+                                    <small class="text-muted">Subtotal: <span class="subtotal fw-bold">$0.00</span></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-dark mt-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Total Amount:</h5>
+                            <h4 class="mb-0 fw-bold" id="totalAmount">$0.00</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-dark flex-fill">
+                        <i class="bi bi-check-circle"></i> Create Order
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-dark">
+                        <i class="bi bi-arrow-left"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function addOrderItem() {
+            const template = document.querySelector('.order-item').cloneNode(true);
+            template.querySelector('.product-select').value = '';
+            template.querySelector('.quantity-input').value = '1';
+            template.querySelector('.subtotal').textContent = '$0.00';
+            document.getElementById('orderItems').appendChild(template);
+            updateTotal();
+        }
+
+        function removeOrderItem(btn) {
+            const items = document.querySelectorAll('.order-item');
+            if (items.length > 1) {
+                btn.closest('.order-item').remove();
+                updateTotal();
+            } else {
+                alert('At least one item is required');
+            }
+        }
+
+        function updatePrice(select) {
+            const item = select.closest('.order-item');
+            const quantityInput = item.querySelector('.quantity-input');
+            const option = select.options[select.selectedIndex];
+            const stock = parseInt(option.dataset.stock || 0);
+            
+            if (stock > 0) {
+                quantityInput.max = stock;
+                if (parseInt(quantityInput.value) > stock) {
+                    quantityInput.value = stock;
+                }
+            }
+            updateSubtotal(select);
+        }
+
+        function updateSubtotal(element) {
+            const item = element.closest('.order-item');
+            const select = item.querySelector('.product-select');
+            const quantity = parseInt(item.querySelector('.quantity-input').value) || 0;
+            const option = select.options[select.selectedIndex];
+            const price = parseFloat(option.dataset.price || 0);
+            
+            const subtotal = price * quantity;
+            item.querySelector('.subtotal').textContent = '$' + subtotal.toFixed(2);
+            updateTotal();
+        }
+
+        function updateTotal() {
+            let total = 0;
+            document.querySelectorAll('.order-item').forEach(item => {
+                const select = item.querySelector('.product-select');
+                const quantity = parseInt(item.querySelector('.quantity-input').value) || 0;
+                const option = select.options[select.selectedIndex];
+                const price = parseFloat(option.dataset.price || 0);
+                total += price * quantity;
+            });
+            document.getElementById('totalAmount').textContent = '$' + total.toFixed(2);
+        }
+    </script>
+}
